@@ -1,0 +1,94 @@
+q.options.forEach((optText, index) => {
+        const btn = document.createElement("button");
+        btn.className =
+          "p-3.5 rounded-2xl border-2 border-slate-200 hover:border-sky-500 hover:bg-sky-50 text-right font-extrabold text-sm md:text-base text-slate-800 transition transform active:scale-98 cursor-pointer shadow-sm";
+        btn.textContent = optText;
+        btn.onclick = () => evaluateAnswer(index, btn);
+        optionsGrid.appendChild(btn);
+      });
+
+      document.getElementById("questionModal").classList.remove("hidden");
+    }
+
+    // تقييم إجابة الطفل
+    function evaluateAnswer(selectedIndex, clickedBtn) {
+      const { question, points } = gameState.activeBalloonData;
+      const allBtns = document.querySelectorAll("#modalOptionsGrid button");
+      allBtns.forEach(b => (b.disabled = true));
+
+      const feedbackBox = document.getElementById("modalFeedbackBox");
+      const feedbackTitle = document.getElementById("feedbackTitle");
+      const feedbackExplanation = document.getElementById("feedbackExplanation");
+
+      const isCorrect = selectedIndex === question.correctIndex;
+
+      if (isCorrect) {
+        playSound("correct");
+        clickedBtn.classList.remove("border-slate-200");
+        clickedBtn.classList.add("bg-emerald-100", "border-emerald-600", "text-emerald-900");
+
+        gameState.score += points;
+        gameState.stars += 1;
+
+        feedbackBox.className = "rounded-2xl p-4 text-right space-y-2 border-2 bg-emerald-50 border-emerald-400 text-emerald-950";
+        feedbackTitle.textContent = 🎉 إجابة صحيحة وممتازة يا ${gameState.heroName}! (+${points} نقطة);
+      } else {
+        playSound("wrong");
+        clickedBtn.classList.remove("border-slate-200");
+        clickedBtn.classList.add("bg-rose-100", "border-rose-500", "text-rose-900");
+
+        // تمييز الإجابة الصحيحة ليتعلمها الطفل
+        allBtns[question.correctIndex].classList.remove("border-slate-200");
+        allBtns[question.correctIndex].classList.add("bg-emerald-100", "border-emerald-600", "text-emerald-900");
+
+        const penalty = 5;
+        gameState.score = Math.max(0, gameState.score - penalty);
+
+        feedbackBox.className = "rounded-2xl p-4 text-right space-y-2 border-2 bg-amber-50 border-amber-400 text-amber-950";
+        feedbackTitle.textContent = 💡 محاولة قريبة! خسرت ${penalty} نقاط، وتعلّمت القاعدة:;
+      }
+
+      feedbackExplanation.textContent = question.explanation;
+      feedbackBox.classList.remove("hidden");
+      updateHUDAndProgress();
+    }
+
+    // إغلاق نافذة السؤال والتحقق هل وصل الطفل لصندوق الكنز
+    function closeQuestionModal() {
+      document.getElementById("questionModal").classList.add("hidden");
+      gameState.modalOpen = false;
+
+      if (gameState.score >= gameState.targetScore) {
+        triggerVictory();
+      }
+    }
+
+    function closeTrapModal() {
+      document.getElementById("trapModal").classList.add("hidden");
+      gameState.modalOpen = false;
+    }
+
+    // تحديث شريط النقاط وتحريك شخصية البطل على مسار الحديقة نحو الكنز
+    function updateHUDAndProgress() {
+      document.getElementById("hudScore").textContent = gameState.score;
+      document.getElementById("hudStars").textContent = gameState.stars;
+
+      const ratio = Math.min(1, gameState.score / gameState.targetScore);
+      // التحرك من اليمين (2%) إلى اليسار (82%) حيث يوجد صندوق الكنز الكبير
+      const rightPos = 2 + ratio * 80;
+      document.getElementById("heroRunner").style.right = rightPos + "%";
+
+      const remaining = Math.max(0, gameState.targetScore - gameState.score);
+      const hintEl = document.getElementById("progressHintText");
+      if (remaining > 0) {
+        hintEl.textContent = بقي لك ${remaining} نقطة فقط لتصل إلى الكنز!;
+      } else {
+        hintEl.textContent = لقد وصلت إلى صندوق الكنز الكبير!;
+      }
+    }
+
+    // الاحتفال بالوصول إلى صندوق الكنز الكبير
+    function triggerVictory() {
+      gameState.isPlaying = false;
+      playSound("win");
+      launchConfetti();
